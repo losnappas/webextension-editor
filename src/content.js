@@ -27,15 +27,11 @@ chrome.runtime.onConnect.addListener((port) => {
 const requests = {}
 
 requests['edit-text-input'] = function() {
-  if (! state.lastUsedInput) {
+  if (!state.lastUsedInput || document.hidden) {
     return
   }
   const [[anchorLine, anchorColumn], [cursorLine, cursorColumn]] = getSelectionRange(state.lastUsedInput)
-  const text = state.lastUsedInput.value
-  state.lastUsedInput.classList.add('webextension-editor')
-  state.lastUsedInput.value = ''
-  state.lastUsedInput.readOnly = true
-  state.lastUsedInput.blur()
+  const text = getInputValue(state.lastUsedInput)
   this.port.postMessage({
     command: 'edit',
     arguments: [{ text, anchorLine, anchorColumn, cursorLine, cursorColumn }]
@@ -43,10 +39,12 @@ requests['edit-text-input'] = function() {
 }
 
 requests['fill-text-input'] = (text) => {
-  state.lastUsedInput.classList.remove('webextension-editor')
-  state.lastUsedInput.readOnly = false
-  state.lastUsedInput.value = text
-  state.lastUsedInput.focus()
+  const input = state.lastUsedInput
+  if (input.isContentEditable) {
+    input.textContent = text
+  }
+  input.value = text
+  input.focus()
 }
 
 // Helpers ─────────────────────────────────────────────────────────────────────
@@ -56,8 +54,11 @@ const isText = (element) => {
   return element.offsetParent !== null && (nodeNames.includes(element.nodeName) || element.isContentEditable)
 }
 
+const getInputValue = (input) =>
+  input.value ?? input.textContent ?? ""
+
 const getSelectionRange = (input) => {
-  let [start, end] = []
+  let anchorPosition, cursorPosition;
   switch (input.selectionDirection) {
     case 'forward':
       [anchorPosition, cursorPosition] = [input.selectionStart, input.selectionEnd]
@@ -65,14 +66,26 @@ const getSelectionRange = (input) => {
     case 'backward':
       [cursorPosition, anchorPosition] = [input.selectionStart, input.selectionEnd]
       break
+
+    default:
+      [anchorPosition, cursorPosition] = getSelectionInContentEditable()
   }
   const [anchorLine, anchorColumn] = getSelectionPosition(input, anchorPosition)
   const [cursorLine, cursorColumn] = getSelectionPosition(input, cursorPosition)
   return [[anchorLine, anchorColumn], [cursorLine, cursorColumn]]
 }
 
+function getSelectionInContentEditable() {
+  const sel = window.getSelection()
+  if (!sel) {
+    return [0,0]
+  }
+  return [sel.anchorOffset, sel.focusOffset]
+}
+
 const getSelectionPosition = (input, position) => {
-  const textLines = input.value.slice(0, position).split('\n')
+  const value = getInputValue(input)
+  const textLines = value.slice(0, position).split('\n')
   const line = textLines.length
   const column = textLines[textLines.length - 1].length + 1
   return [line, column]

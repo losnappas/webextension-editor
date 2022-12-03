@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Editor",
   "description": "Open an external editor to edit text inputs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "permissions": [
     "storage"
   ],
@@ -42,8 +42,8 @@
     }
   ],
   "icons": {
-    "16": "packages/edit.png",
-    "48": "packages/edit.png",
-    "128": "packages/edit.png"
+    "16": "packages/edit.svg",
+    "48": "packages/edit.svg",
+    "128": "packages/edit.svg"
   }
 }
