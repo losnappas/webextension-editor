@@ -41,7 +41,13 @@ requests['edit-text-input'] = function() {
 requests['fill-text-input'] = (text) => {
   const input = state.lastUsedInput
   if (input.isContentEditable) {
-    input.textContent = text
+    // Some editors, like on discord, use this.
+    input.dispatchEvent(new InputEvent("beforeinput", { data: text, bubbles: true, inputType: "insertText" }))
+    if (!input.textContent.includes(text)) {
+      // But that doesn't work on slack, so backup.
+      // On the other hand doing this on discord breaks the input field.
+      input.textContent = text
+    }
   }
   input.value = text
   input.focus()
@@ -54,11 +60,16 @@ const isText = (element) => {
   return element.offsetParent !== null && (nodeNames.includes(element.nodeName) || element.isContentEditable)
 }
 
-const getInputValue = (input) =>
-  input.value ?? input.textContent ?? ""
+const getInputValue = (input) => {
+  if (input.isContentEditable) {
+    document.execCommand("selectAll")
+    return document.getSelection().toString()
+  }
+  return input.value ?? input.textContent ?? ""
+}
 
 const getSelectionRange = (input) => {
-  let anchorPosition, cursorPosition;
+  let anchorPosition, cursorPosition
   switch (input.selectionDirection) {
     case 'forward':
       [anchorPosition, cursorPosition] = [input.selectionStart, input.selectionEnd]
@@ -66,7 +77,6 @@ const getSelectionRange = (input) => {
     case 'backward':
       [cursorPosition, anchorPosition] = [input.selectionStart, input.selectionEnd]
       break
-
     default:
       [anchorPosition, cursorPosition] = getSelectionInContentEditable()
   }
@@ -78,7 +88,7 @@ const getSelectionRange = (input) => {
 function getSelectionInContentEditable() {
   const sel = window.getSelection()
   if (!sel) {
-    return [0,0]
+    return [0, 0]
   }
   return [sel.anchorOffset, sel.focusOffset]
 }
