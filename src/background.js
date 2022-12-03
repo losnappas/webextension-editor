@@ -156,6 +156,10 @@ internal.requests['edit'] = function({ text, anchorLine, anchorColumn, cursorLin
     `
   })
   shell.port.onMessage.addListener((response) => {
+    // Ignore requests from tab switcher.
+    if (response.id !== "edit") {
+      return
+    }
     const text = response.output.replace(/\n$/, '')
     this.port.postMessage({
       command: 'fill-text-input',

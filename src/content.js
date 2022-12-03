@@ -39,21 +39,43 @@ requests['edit-text-input'] = function() {
 }
 
 requests['fill-text-input'] = (text) => {
+  if (document.hidden) {
+    return
+  }
+  if (!state.lastUsedInput) {
+    navigator.clipboard.writeText(text)
+    return
+  }
   const input = state.lastUsedInput
   if (input.isContentEditable) {
-    // Some editors, like on discord, use this.
-    input.dispatchEvent(new InputEvent("beforeinput", { data: text, bubbles: true, inputType: "insertText" }))
-    if (!input.textContent.includes(text)) {
-      // But that doesn't work on slack, so backup.
-      // On the other hand doing this on discord breaks the input field.
-      input.textContent = text
-    }
+    updateContentEditableText(input, text)
   }
   input.value = text
   input.focus()
 }
 
 // Helpers ─────────────────────────────────────────────────────────────────────
+
+// Many different issues w/ WYSIWYG editors.
+const updateContentEditableText = (input, text) => {
+  // contentEditable is sketch, so copy...
+  navigator.clipboard.writeText(text)
+  input.focus()
+  try {
+    window.eval(`
+    const pasteEvent = new ClipboardEvent("paste", { bubbles: true, composed: true })
+    pasteEvent.clipboardData = new DataTransfer()
+    pasteEvent.clipboardData.setData("text/plain", '${text.replace(/'/g, "\\'")}')
+    const input = document.querySelector('.${Array.from(input.classList).join(".")}')
+    input.focus()
+    input.dispatchEvent(pasteEvent)
+    // document.dispatchEvent(pasteEvent)
+    `)
+  } catch {
+    // Some editors, like on Slack, use this.
+    input.textContent = text
+  }
+}
 
 const isText = (element) => {
   const nodeNames = ['INPUT', 'TEXTAREA', 'OBJECT']
