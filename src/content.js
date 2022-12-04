@@ -12,14 +12,14 @@ window.addEventListener('focus', (event) => {
 // Requests ────────────────────────────────────────────────────────────────────
 
 chrome.runtime.onConnect.addListener((port) => {
-  port.onMessage.addListener((request) => {
+  port.onMessage.addListener(async (request) => {
     const command = requests[request.command]
     const arguments = request.arguments || []
     const self = {
       port
     }
     if (command) {
-      command.apply(self, arguments)
+      await command.apply(self, arguments)
     }
   })
 })
@@ -38,17 +38,17 @@ requests['edit-text-input'] = function() {
   })
 }
 
-requests['fill-text-input'] = (text) => {
+requests['fill-text-input'] = async (text) => {
   if (document.hidden) {
     return
   }
   if (!state.lastUsedInput) {
-    navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(text)
     return
   }
   const input = state.lastUsedInput
   if (input.isContentEditable) {
-    updateContentEditableText(input, text)
+    await updateContentEditableText(input, text)
   }
   input.value = text
   input.focus()
@@ -57,19 +57,18 @@ requests['fill-text-input'] = (text) => {
 // Helpers ─────────────────────────────────────────────────────────────────────
 
 // Many different issues w/ WYSIWYG editors.
-const updateContentEditableText = (input, text) => {
+const updateContentEditableText = async (input, text) => {
   // contentEditable is sketch, so copy...
-  navigator.clipboard.writeText(text)
-  input.focus()
+  await navigator.clipboard.writeText(text)
   try {
     window.eval(`
     const pasteEvent = new ClipboardEvent("paste", { bubbles: true, composed: true })
     pasteEvent.clipboardData = new DataTransfer()
-    pasteEvent.clipboardData.setData("text/plain", '${text.replace(/'/g, "\\'")}')
+    pasteEvent.clipboardData.setData("text/plain", ${JSON.stringify(text)})
     const input = document.querySelector('.${Array.from(input.classList).join(".")}')
     input.focus()
-    input.dispatchEvent(pasteEvent)
-    // document.dispatchEvent(pasteEvent)
+    document.execCommand("selectAll")
+    setTimeout(() => input.dispatchEvent(pasteEvent), 50)
     `)
   } catch {
     // Some editors, like on Slack, use this.
