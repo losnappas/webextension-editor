@@ -56,6 +56,25 @@ requests['fill-text-input'] = async (text) => {
 
 // Helpers ─────────────────────────────────────────────────────────────────────
 
+// Gets unique selector path.
+// https://stackoverflow.com/a/70339978
+const getSelector = function(el) {
+      if (el.tagName.toLowerCase() == "html")
+          return "html";
+      var str = el.tagName.toLowerCase();
+      str += (el.id != "") ? "#" + el.id : "";
+      if (el.className) {
+          var classes = el.className.trim().split(/\s+/);
+          for (var i = 0; i < classes.length; i++) {
+              str += "." + classes[i]
+          }
+      }
+      
+      if(document.querySelectorAll(str).length==1) return str;
+      
+      return getSelector(el.parentNode) + " > " + str;
+}
+
 // Many different issues w/ WYSIWYG editors.
 const updateContentEditableText = async (input, text) => {
   // contentEditable is sketch, so copy...
@@ -65,7 +84,7 @@ const updateContentEditableText = async (input, text) => {
     const pasteEvent = new ClipboardEvent("paste", { bubbles: true, composed: true })
     pasteEvent.clipboardData = new DataTransfer()
     pasteEvent.clipboardData.setData("text/plain", ${JSON.stringify(text)})
-    const input = document.querySelector('.${Array.from(input.classList).join(".")}')
+    const input = document.querySelector(${JSON.stringify(getSelector(input))})
     input.focus()
     document.execCommand("selectAll")
     setTimeout(() => input.dispatchEvent(pasteEvent), 50)
