@@ -2,6 +2,7 @@
 
 const state = {}
 state.lastUsedInput = null
+state.tabId = `id-${Math.random()}`
 
 window.addEventListener('focus', (event) => {
   if (isText(event.target)) {
@@ -26,7 +27,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
 const requests = {}
 
-requests['edit-text-input'] = function() {
+requests['edit-text-input'] = async function(tabId) {
   if (!state.lastUsedInput || document.hidden) {
     return
   }
@@ -34,12 +35,12 @@ requests['edit-text-input'] = function() {
   const text = getInputValue(state.lastUsedInput)
   this.port.postMessage({
     command: 'edit',
-    arguments: [{ text, anchorLine, anchorColumn, cursorLine, cursorColumn }]
+    arguments: [{ text, anchorLine, anchorColumn, cursorLine, cursorColumn, tabId: getTabId() }]
   })
 }
 
-requests['fill-text-input'] = async (text) => {
-  if (document.hidden) {
+requests['fill-text-input'] = async (tabId, text) => {
+  if (tabId !== getTabId()) {
     return
   }
   if (!state.lastUsedInput) {
@@ -55,6 +56,10 @@ requests['fill-text-input'] = async (text) => {
 }
 
 // Helpers ─────────────────────────────────────────────────────────────────────
+
+const getTabId = () => {
+  return state.tabId
+}
 
 // Gets unique selector path.
 // https://stackoverflow.com/a/70339978

@@ -16,6 +16,7 @@ switch (true) {
 // Shell
 const shell = {}
 shell.port = chrome.runtime.connect(SHELL_EXTENSION_ID)
+shell.reply = {}
 
 // Settings ────────────────────────────────────────────────────────────────────
 
@@ -129,9 +130,9 @@ internal = {}
 // Requests
 internal.requests = {}
 
-internal.requests['edit'] = function({ text, anchorLine, anchorColumn, cursorLine, cursorColumn }) {
+internal.requests['edit'] = function({ text, anchorLine, anchorColumn, cursorLine, cursorColumn, tabId }) {
   shell.port.postMessage({
-    id: 'edit',
+    id: 'edit@@'+tabId,
     shell: true,
     input: text,
     command: `
@@ -155,15 +156,21 @@ internal.requests['edit'] = function({ text, anchorLine, anchorColumn, cursorLin
       cat "$file"
     `
   })
-  shell.port.onMessage.addListener((response) => {
-    // Ignore requests from tab switcher.
-    if (response.id !== "edit") {
-      return
-    }
-    const text = response.output.replace(/\n$/, '')
-    this.port.postMessage({
-      command: 'fill-text-input',
-      arguments: [text]
-    })
-  })
+  console.log('adding to tabId', tabId)
+  shell.reply[tabId] = this.port.postMessage
 }
+
+shell.port.onMessage.addListener(async (response) => {
+  const [id, tabId] = response.id.split("@@") || []
+  // Ignore requests from tab switcher.
+  if (id !== "edit") {
+    return
+  }
+  const text = response.output.replace(/\n$/, '')
+  console.log("text", text, "to", tabId, 'in', shell.reply)
+  await shell.reply[tabId]({
+    command: 'fill-text-input',
+    arguments: [tabId, text]
+  })
+  delete shell.reply[tabId]
+})

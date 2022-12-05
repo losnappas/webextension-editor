@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Editor",
   "description": "Open an external editor to edit text inputs",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "permissions": [
     "storage",
     "clipboardWrite"
