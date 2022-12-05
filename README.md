@@ -8,6 +8,8 @@
 
 Open an external editor to edit text inputs.
 
+Download for firefox (v0.7): https://addons.mozilla.org/firefox/downloads/file/4039560/71c37ab1c4b344a0aaa5-0.7.0.xpi
+
 ## Dependencies
 
 - [jq]
